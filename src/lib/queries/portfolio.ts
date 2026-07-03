@@ -25,10 +25,9 @@ export async function getFeaturedPhotos(): Promise<PortfolioPhoto[]> {
   const { data } = await supabase
     .from('portfolio_photos')
     .select('*, category:portfolio_categories(id, name, slug)')
-    .eq('is_featured', true)
-    .eq('is_active', true)
+    .eq('is_active', true)          // mostrar todas las activas (no solo is_featured)
     .order('sort_order', { ascending: true })
-    .limit(8)
+    .limit(12)
   return (data ?? []) as unknown as PortfolioPhoto[]
 }
 

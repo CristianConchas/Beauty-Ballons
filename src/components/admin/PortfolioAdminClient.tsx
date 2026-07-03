@@ -68,15 +68,16 @@ export function PortfolioAdminClient({ photos, categories }: Props) {
         // Construir URL pública
         const publicUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/${STORAGE.bucket}/${path}`
 
-        // Crear registro en DB (category_id: primera categoría por defecto)
+        // Usar la categoría seleccionada en el filtro, o la primera disponible
+        const targetCategoryId = (filter !== 'all' ? filter : categories[0]?.id) ?? ''
         await createPhoto({
           image_url:     publicUrl,
-          thumbnail_url: publicUrl, // en producción una Edge Function generaría el thumb
-          category_id:   categories[0]?.id ?? '',
+          thumbnail_url: publicUrl,
+          category_id:   targetCategoryId,
           alt_text:      file.name.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' '),
           width:         dimensions.width,
           height:        dimensions.height,
-          is_featured:   false,
+          is_featured:   true,  // destacar automáticamente para que salga en el home
           is_active:     true,
           sort_order:    photos.length,
         })
