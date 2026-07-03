@@ -105,7 +105,7 @@ export async function deletePhoto(id: string, imageUrl: string) {
  */
 export async function getUploadSignedUrl(
   filename:  string,
-  mimeType:  string
+  _mimeType:  string
 ): Promise<{ signedUrl: string; path: string }> {
   await requireAdminUser()
 

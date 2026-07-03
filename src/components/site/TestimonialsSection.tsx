@@ -40,7 +40,7 @@ function TestimonialCard({ t }: { t: Testimonial }) {
           fontWeight: 300,
         }}
       >
-        "{t.content}"
+        &ldquo;{t.content}&rdquo;
       </blockquote>
 
       {/* Autor */}

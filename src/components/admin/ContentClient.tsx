@@ -128,7 +128,11 @@ export function ContentClient({
   async function saveService() {
     setSvcSaving(true)
     try {
-      svcEdit ? await updateService(svcEdit.id, svcForm) : await createService({ ...svcForm, sort_order: services.length })
+      if (svcEdit) {
+        await updateService(svcEdit.id, svcForm)
+      } else {
+        await createService({ ...svcForm, sort_order: services.length })
+      }
       toast.success(svcEdit ? 'Actualizado' : 'Creado'); setSvcModal(false); refresh()
     } catch (e: any) { toast.error(e.message ?? 'Error') }
     finally { setSvcSaving(false) }
@@ -150,7 +154,11 @@ export function ContentClient({
   async function saveTestimonial() {
     setTestSaving(true)
     try {
-      testEdit ? await updateTestimonial(testEdit.id, testForm) : await createTestimonial({ ...testForm, sort_order: testimonials.length })
+      if (testEdit) {
+        await updateTestimonial(testEdit.id, testForm)
+      } else {
+        await createTestimonial({ ...testForm, sort_order: testimonials.length })
+      }
       toast.success(testEdit ? 'Actualizado' : 'Creado'); setTestModal(false); refresh()
     } catch (e: any) { toast.error(e.message ?? 'Error') }
     finally { setTestSaving(false) }
@@ -172,7 +180,11 @@ export function ContentClient({
   async function saveFaq() {
     setFaqSaving(true)
     try {
-      faqEdit ? await updateFaq(faqEdit.id, faqForm) : await createFaq({ ...faqForm, sort_order: faqs.length })
+      if (faqEdit) {
+        await updateFaq(faqEdit.id, faqForm)
+      } else {
+        await createFaq({ ...faqForm, sort_order: faqs.length })
+      }
       toast.success(faqEdit ? 'Actualizada' : 'Creada'); setFaqModal(false); refresh()
     } catch (e: any) { toast.error(e.message ?? 'Error') }
     finally { setFaqSaving(false) }

@@ -66,7 +66,7 @@ export function useLightbox(photos: LightboxPhoto[]) {
         const endX   = endEvent.changedTouches[0]?.clientX ?? 0
         const diff   = (startX ?? 0) - endX
         if (Math.abs(diff) > 50) {
-          diff > 0 ? next() : prev()
+          if (diff > 0) { next() } else { prev() }
         }
         window.removeEventListener('touchend', handleTouchEnd)
       }
