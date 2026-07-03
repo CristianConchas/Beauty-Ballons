@@ -347,3 +347,20 @@ create policy "storage_public_read" on storage.objects for select using (bucket_
 create policy "storage_admin_insert" on storage.objects for insert with check (bucket_id = 'beauty-ballons' and public.is_admin());
 create policy "storage_admin_update" on storage.objects for update using (bucket_id = 'beauty-ballons' and public.is_admin());
 create policy "storage_owner_delete" on storage.objects for delete using (bucket_id = 'beauty-ballons' and public.is_owner());
+
+-- ── Instagram Config (agregado para IG Graph API) ─────────────
+create table if not exists public.ig_config (
+  id               uuid primary key default gen_random_uuid(),
+  access_token     text not null,
+  instagram_user_id text,
+  token_expires_at  timestamptz,
+  last_refreshed    timestamptz,
+  is_active        boolean not null default true,
+  created_at       timestamptz not null default now(),
+  updated_at       timestamptz not null default now()
+);
+
+alter table public.ig_config enable row level security;
+
+create policy "ig_config_admin_all" on public.ig_config
+  for all using (public.is_admin());

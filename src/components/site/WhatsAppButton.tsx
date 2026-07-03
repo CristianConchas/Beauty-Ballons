@@ -13,9 +13,8 @@ export function WhatsAppButton({ number, message }: WhatsAppButtonProps) {
 
   return (
     <>
-      {/* Estilos del pulso — ::before en el elemento real */}
       <style>{`
-        .wa-fab-btn::before {
+        .wa-fab::before {
           content: '';
           position: absolute;
           inset: 0;
@@ -29,18 +28,17 @@ export function WhatsAppButton({ number, message }: WhatsAppButtonProps) {
           70%, 100% { transform: scale(1.6); opacity: 0   }
         }
       `}</style>
-
       <a
         href={url}
         target="_blank"
         rel="noopener noreferrer"
         onClick={() => trackWhatsAppClick('float')}
-        aria-label="Contactar por WhatsApp: 33 2294 2088"
-        className="wa-fab-btn fixed bottom-6 right-4 z-30 flex h-14 w-14 items-center justify-center rounded-full text-white transition-transform hover:scale-110 active:scale-95"
+        aria-label="Contactar por WhatsApp"
+        className="wa-fab fixed bottom-24 right-4 z-30 flex h-14 w-14 items-center justify-center rounded-full text-white transition-transform hover:scale-110 active:scale-95"
         style={{
-          background: '#25D366',
-          boxShadow: '0 4px 18px rgba(37,211,102,0.42)',
-          position: 'fixed',
+          background:  '#25D366',
+          boxShadow:   '0 4px 18px rgba(37,211,102,0.42)',
+          position:    'fixed',
         }}
       >
         <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
