@@ -168,7 +168,6 @@ export function PortfolioAdminClient({ photos, categories }: Props) {
               multiple
               className="hidden"
               onChange={handleFileChange}
-              capture="environment"
             />
           </label>
         </div>
