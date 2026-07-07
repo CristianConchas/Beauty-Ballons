@@ -18,6 +18,7 @@ import { CtaSection }          from '@/components/site/CtaSection'
 import { Footer }              from '@/components/site/Footer'
 import { WhatsAppButton }      from '@/components/site/WhatsAppButton'
 import { RevealObserver }      from '@/components/site/RevealObserver'
+import { FaqSchema }           from '@/components/site/SchemaOrg'
 import { SITE_DEFAULTS }       from '@/config/site'
 
 // ISR: regenerar la página cada 30 segundos en producción
@@ -51,6 +52,11 @@ export default async function HomePage() {
 
   return (
     <>
+      {/* FAQPage Schema para SEO */}
+      {faqs.length > 0 && (
+        <FaqSchema faqs={faqs.map(f => ({ question: f.question, answer: f.answer }))} />
+      )}
+
       <RevealObserver />
 
       <Navbar

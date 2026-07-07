@@ -1,7 +1,13 @@
 'use client'
 
 import Image from 'next/image'
-import { useState, useEffect } from 'react'
+import { useEffect } from 'react'
+
+declare global {
+  interface Window {
+    instgrm?: { Embeds: { process(): void } }
+  }
+}
 import { X, ChevronLeft, ChevronRight } from 'lucide-react'
 import { usePortfolioFilter } from '@/hooks/usePortfolioFilter'
 import { useLightbox } from '@/hooks/useLightbox'
@@ -10,13 +16,6 @@ import type { PortfolioPhoto, PortfolioCategory } from '@/types/content.types'
 import type { SectionLabel } from '@/types/site.types'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
-
-interface IgPost {
-  id:        string
-  media_url: string
-  permalink: string
-  caption:   string | null
-}
 
 interface PortfolioSectionProps {
   photos:       PortfolioPhoto[]
@@ -27,52 +26,59 @@ interface PortfolioSectionProps {
   showViewAll?: boolean
 }
 
-/** Grid de IG cuando no hay fotos subidas manualmente */
-function IgFeedGrid({ waNumber }: { waNumber: string }) {
-  const [posts,     setPosts]     = useState<IgPost[]>([])
-  const [connected, setConnected] = useState(false)
-  const [loading,   setLoading]   = useState(true)
-
+/** Feed de Instagram usando embed oficial
+ *  Funciona con cualquier cuenta pública — sin API, sin tokens */
+function IgFeedGrid() {
   useEffect(() => {
-    fetch('/api/ig-feed')
-      .then(r => r.json())
-      .then(d => {
-        setPosts(d.posts ?? [])
-        setConnected(d.connected)
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false))
+    // Cargar el script oficial de Instagram de forma diferida
+    if (document.getElementById('ig-embed-script')) {
+      // Si ya está cargado, re-procesar los embeds
+      if (window.instgrm) window.instgrm.Embeds.process()
+      return
+    }
+    const script = document.createElement('script')
+    script.id    = 'ig-embed-script'
+    script.src   = 'https://www.instagram.com/embed.js'
+    script.async = true
+    script.defer = true
+    script.onload = () => {
+      if (window.instgrm) window.instgrm.Embeds.process()
+    }
+    document.body.appendChild(script)
   }, [])
 
-  if (loading) {
-    return (
-      <div className="grid grid-cols-3 gap-1 sm:gap-2 px-3">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="aspect-square rounded-xl skeleton" />
-        ))}
-      </div>
-    )
-  }
+  return (
+    <div className="px-4">
+      {/* Embed oficial de Instagram — muestra los últimos posts del perfil */}
+      <div className="flex flex-col items-center gap-4">
 
-  if (!connected || posts.length === 0) {
-    // Fallback: CTA para seguir en Instagram
-    return (
-      <div
-        className="mx-4 rounded-2xl p-8 text-center"
-        style={{ background: 'rgba(200,81,122,0.06)', border: '1px solid rgba(200,81,122,0.15)' }}
-      >
-        <div className="mb-3 text-4xl">📸</div>
-        <p className="font-heading text-xl font-light" style={{ color: 'var(--text-primary)' }}>
-          Síguenos en Instagram
-        </p>
-        <p className="mt-1 text-sm font-light" style={{ color: 'var(--text-secondary)' }}>
-          Ve todos nuestros trabajos en tiempo real
-        </p>
+        {/* Post 1 */}
+        <blockquote
+          className="instagram-media"
+          data-instgrm-permalink="https://www.instagram.com/beauty_.balloons/"
+          data-instgrm-version="14"
+          data-instgrm-captioned
+          style={{
+            background: '#FFF',
+            border: 0,
+            borderRadius: '1rem',
+            boxShadow: '0 0 1px 0 rgba(0,0,0,.5), 0 1px 10px 0 rgba(0,0,0,.15)',
+            margin: '0 auto',
+            maxWidth: 540,
+            minWidth: 326,
+            padding: 0,
+            width: '100%',
+          }}
+        />
+      </div>
+
+      {/* Botón para ver más en Instagram */}
+      <div className="mt-6 text-center">
         <a
           href="https://www.instagram.com/beauty_.balloons"
           target="_blank"
           rel="noopener noreferrer"
-          className="mt-4 inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold text-white transition-all hover:-translate-y-0.5"
+          className="inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-semibold text-white transition-all hover:-translate-y-0.5 hover:shadow-lg"
           style={{ background: 'linear-gradient(135deg, #E1306C, #833AB4)' }}
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
@@ -80,42 +86,9 @@ function IgFeedGrid({ waNumber }: { waNumber: string }) {
             <circle cx="12" cy="12" r="4"/>
             <circle cx="17.5" cy="6.5" r=".5" fill="currentColor"/>
           </svg>
-          @beauty_.balloons
+          Ver todos los trabajos en Instagram
         </a>
-        <div className="mt-4 text-xs" style={{ color: 'var(--text-muted)' }}>
-          <Link href="/admin/ajustes" className="hover:underline" style={{ color: 'var(--color-primary)' }}>
-            Conectar Instagram desde el panel admin →
-          </Link>
-        </div>
       </div>
-    )
-  }
-
-  return (
-    <div className="grid grid-cols-3 gap-1 sm:gap-2 px-3">
-      {posts.map((post) => (
-        <a
-          key={post.id}
-          href={post.permalink}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="group relative aspect-square overflow-hidden rounded-xl"
-          aria-label={post.caption ?? 'Ver en Instagram'}
-        >
-          <Image
-            src={post.media_url}
-            alt={post.caption ?? 'Foto de Beauty Ballons'}
-            fill
-            className="object-cover transition-transform duration-300 group-hover:scale-105"
-            sizes="(max-width: 640px) 33vw, (max-width: 1024px) 25vw, 20vw"
-          />
-          <div className="absolute inset-0 flex items-end bg-gradient-to-t from-black/55 to-transparent p-2 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
-            <p className="line-clamp-2 text-[0.65rem] text-white">
-              {post.caption ?? 'Ver en Instagram'}
-            </p>
-          </div>
-        </a>
-      ))}
     </div>
   )
 }
@@ -239,7 +212,7 @@ export function PortfolioSection({
           </>
         ) : (
           /* Feed de Instagram cuando no hay fotos subidas */
-          <IgFeedGrid waNumber={waNumber} />
+          <IgFeedGrid />
         )}
       </section>
 

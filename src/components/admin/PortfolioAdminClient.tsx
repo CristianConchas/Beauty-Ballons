@@ -65,19 +65,35 @@ export function PortfolioAdminClient({ photos, categories }: Props) {
 
         if (!uploadRes.ok) throw new Error('Error al subir archivo')
 
-        // Construir URL pública
+        // Construir URL pública de la imagen original
         const publicUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/${STORAGE.bucket}/${path}`
 
-        // Usar la categoría seleccionada en el filtro, o la primera disponible
+        // Generar thumbnail optimizado 600px WebP via Sharp
+        let thumbnailUrl = publicUrl
+        try {
+          const thumbRes = await fetch('/api/thumbnail', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ originalPath: path }),
+          })
+          if (thumbRes.ok) {
+            const thumbData = await thumbRes.json()
+            thumbnailUrl = thumbData.thumbnailUrl ?? publicUrl
+          }
+        } catch {
+          // Fallback: usar imagen original como thumbnail
+        }
+
+        // Crear registro en DB con la categoría activa
         const targetCategoryId = (filter !== 'all' ? filter : categories[0]?.id) ?? ''
         await createPhoto({
           image_url:     publicUrl,
-          thumbnail_url: publicUrl,
+          thumbnail_url: thumbnailUrl,
           category_id:   targetCategoryId,
           alt_text:      file.name.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' '),
           width:         dimensions.width,
           height:        dimensions.height,
-          is_featured:   true,  // destacar automáticamente para que salga en el home
+          is_featured:   true,
           is_active:     true,
           sort_order:    photos.length,
         })
@@ -162,9 +178,9 @@ export function PortfolioAdminClient({ photos, categories }: Props) {
             ) : (
               <><Plus className="h-4 w-4" /> Subir fotos</>
             )}
-            <input
+<input
               type="file"
-              accept="image/*"
+              accept="image/jpeg,image/jpg,image/png,image/webp,image/heic,image/heif"
               multiple
               className="hidden"
               onChange={handleFileChange}

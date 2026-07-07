@@ -2,6 +2,8 @@ import type { Metadata } from 'next'
 import type { ReactNode } from 'react'
 import { getSeoConfig, getSiteConfig } from '@/lib/queries/site-config'
 import { SITE_DEFAULTS } from '@/config/site'
+import { SchemaOrg } from '@/components/site/SchemaOrg'
+import { Analytics } from '@/components/site/Analytics'
 
 export async function generateMetadata(): Promise<Metadata> {
   const [seo, config] = await Promise.all([getSeoConfig(), getSiteConfig()])
@@ -13,17 +15,15 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title,
     description,
-    alternates: {
-      canonical,
-    },
+    alternates: { canonical },
     openGraph: {
       title,
       description,
-      url:       canonical,
-      siteName:  config?.site_name ?? SITE_DEFAULTS.name,
-      locale:    'es_MX',
-      type:      'website',
-      images: seo?.og_image_url
+      url:      canonical,
+      siteName: config?.site_name ?? SITE_DEFAULTS.name,
+      locale:   'es_MX',
+      type:     'website',
+      images:   seo?.og_image_url
         ? [{ url: seo.og_image_url, width: 1200, height: 630, alt: title }]
         : [],
     },
@@ -31,20 +31,35 @@ export async function generateMetadata(): Promise<Metadata> {
       card:        'summary_large_image',
       title,
       description,
-      images: seo?.og_image_url ? [seo.og_image_url] : [],
+      images:      seo?.og_image_url ? [seo.og_image_url] : [],
     },
     robots: {
-      index:             true,
-      follow:            true,
+      index:     true,
+      follow:    true,
       googleBot: {
-        index:  true,
-        follow: true,
+        index:              true,
+        follow:             true,
         'max-image-preview': 'large',
       },
     },
   }
 }
 
-export default function SiteLayout({ children }: { children: ReactNode }) {
-  return <>{children}</>
+export default async function SiteLayout({ children }: { children: ReactNode }) {
+  const [seo, config] = await Promise.all([getSeoConfig(), getSiteConfig()])
+
+  return (
+    <>
+      {/* Schema.org — SEO local estructurado */}
+      <SchemaOrg config={config} seo={seo} pageType="home" />
+
+      {/* Google Analytics 4 + Meta Pixel */}
+      <Analytics
+        gaId={seo?.google_analytics_id}
+        pixelId={seo?.meta_pixel_id}
+      />
+
+      {children}
+    </>
+  )
 }
