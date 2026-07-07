@@ -64,7 +64,7 @@ INSERT INTO public.hero_section (
 ) VALUES (
   'Cada detalle',
   'perfectamente decorado',
-  'Globos, centros de mesa, velas y recuerditos para que tu evento sea exactamente como lo imaginaste.',
+  'Globos, centros de mesa, velas y recuerditos. Cotiza sin compromiso y recibe atención personalizada.',
   '🎈 Guadalajara · Zapopan · ZMG',
   NULL, 0.45,
   'Cotizar sin compromiso', 'whatsapp',
