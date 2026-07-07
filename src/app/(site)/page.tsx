@@ -60,11 +60,8 @@ export default async function HomePage() {
       <RevealObserver />
 
       <Navbar
-        logoUrl={config?.logo_url    ?? null}
-        siteName={config?.site_name  ?? SITE_DEFAULTS.name}
-        waNumber={waNumber}
-        waMsg={waMsg}
-        navbarCta={config?.navbar_cta_text ?? 'Cotizar'}
+        logoUrl={config?.logo_url   ?? null}
+        siteName={config?.site_name ?? SITE_DEFAULTS.name}
       />
 
       {hero && <HeroSection hero={hero} waNumber={waNumber} waMsg={waMsg} />}
