@@ -276,7 +276,15 @@ export function ContentClient({
                     <p className="text-[0.7rem] text-admin-muted">{t.event_type}{t.location ? ` · ${t.location}` : ''}</p>
                     <p className="mt-1.5 text-xs text-admin-muted line-clamp-2">{t.content}</p>
                   </div>
-                  <div className="flex gap-2 shrink-0">
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Toggle
+                      size="sm"
+                      checked={t.is_active}
+                      onChange={async (v) => {
+                        try { await updateTestimonial(t.id, { is_active: v }); refresh() }
+                        catch { toast.error('Error') }
+                      }}
+                    />
                     <button onClick={() => openEditTest(t)} className="text-xs font-semibold" style={{ color: 'var(--color-primary)' }}>Editar</button>
                     <button onClick={() => setTestDel(t)} className="text-red-400 hover:text-red-600"><Trash2 className="h-3.5 w-3.5" /></button>
                   </div>
@@ -372,10 +380,11 @@ export function ContentClient({
                       <p className="text-[0.68rem] font-semibold uppercase tracking-wide text-admin-muted">
                         {SECTION_NAMES[key] ?? key}
                       </p>
-                      <Input label="Título" value={form.title} maxLength={80}
+                      <Input label="Título de la sección" value={form.title} maxLength={80}
                         onChange={e => setLabelForms(p => ({ ...p, [key]: { ...form, title: e.target.value } }))} />
-                      <Input label="Subtítulo" value={form.subtitle} maxLength={120}
-                        onChange={e => setLabelForms(p => ({ ...p, [key]: { ...form, subtitle: e.target.value } }))} />
+                      <Input label="Subtítulo (opcional)" value={form.subtitle} maxLength={160}
+                        onChange={e => setLabelForms(p => ({ ...p, [key]: { ...form, subtitle: e.target.value } }))}
+                        placeholder="Descripción breve debajo del título" />
                       <Button size="sm" onClick={() => saveLabel(key)}>Guardar</Button>
                     </div>
                   )

@@ -57,16 +57,31 @@ export function AjustesClient({ config, seo, adminUsers, currentUserId }: Props)
   const refresh    = () => startT(() => router.refresh())
 
   // ── Config general ────────────────────────────────────────
-  const [siteName, setSiteName]   = useState(config?.site_name ?? '')
-  const [waNumber, setWaNumber]   = useState(config?.whatsapp_number ?? '')
-  const [waMsg, setWaMsg]         = useState(config?.whatsapp_default_msg ?? '')
+  const [siteName, setSiteName]     = useState(config?.site_name ?? '')
+  const [tagline, setTagline]       = useState(config?.tagline ?? '')
+  const [logoUrl, setLogoUrl]       = useState(config?.logo_url ?? '')
+  const [waNumber, setWaNumber]     = useState(config?.whatsapp_number ?? '')
+  const [waMsg, setWaMsg]           = useState(config?.whatsapp_default_msg ?? '')
+  const [waFloat, setWaFloat]       = useState(config?.whatsapp_float_visible ?? true)
   const [coverageZone, setCoverage] = useState(config?.coverage_zone ?? '')
   const [responseTime, setResponse] = useState(config?.response_time ?? '')
-  const [maintenance, setMaintenance] = useState(config?.maintenance_mode ?? false)
+  const [openingHours, setHours]    = useState(config?.opening_hours ?? '')
+  const [privacyUrl, setPrivacyUrl] = useState(config?.privacy_policy_url ?? '')
+  const [legalText, setLegalText]   = useState(config?.legal_text ?? '')
+  const [maintenance, setMaintenance]   = useState(config?.maintenance_mode ?? false)
+  const [maintenanceMsg, setMainMsg]    = useState(config?.maintenance_msg ?? '')
 
   async function saveGeneral() {
     try {
-      await updateSiteConfig({ site_name: siteName, whatsapp_number: waNumber, whatsapp_default_msg: waMsg, coverage_zone: coverageZone, response_time: responseTime, maintenance_mode: maintenance })
+      await updateSiteConfig({
+        site_name: siteName, tagline, logo_url: logoUrl || null,
+        whatsapp_number: waNumber, whatsapp_default_msg: waMsg,
+        whatsapp_float_visible: waFloat,
+        coverage_zone: coverageZone, response_time: responseTime,
+        opening_hours: openingHours,
+        privacy_policy_url: privacyUrl || null, legal_text: legalText || null,
+        maintenance_mode: maintenance, maintenance_msg: maintenanceMsg || null,
+      })
       toast.success('Configuración guardada')
       refresh()
     } catch (e: any) { toast.error(e.message ?? 'Error al guardar') }
@@ -105,6 +120,25 @@ export function AjustesClient({ config, seo, adminUsers, currentUserId }: Props)
     catch { toast.error('Error al guardar') }
   }
 
+  // ── Instagram ─────────────────────────────────────────────
+  const [igToken, setIgToken] = useState('')
+  const [igSaving, setIgSaving] = useState(false)
+  async function saveIgToken() {
+    if (!igToken.trim()) { toast.error('Ingresa el token'); return }
+    setIgSaving(true)
+    try {
+      const res = await fetch('/api/ig-config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ access_token: igToken.trim() }),
+      })
+      if (!res.ok) throw new Error('Error al guardar')
+      toast.success('Token de Instagram guardado')
+      setIgToken('')
+    } catch { toast.error('Error al guardar el token') }
+    finally { setIgSaving(false) }
+  }
+
   // ── SEO ───────────────────────────────────────────────────
   const [seoForm, setSeoForm] = useState({
     meta_title:       seo?.meta_title       ?? '',
@@ -125,17 +159,42 @@ export function AjustesClient({ config, seo, adminUsers, currentUserId }: Props)
       {/* ── GENERAL ── */}
       <Section title="Información general" icon="⚙️">
         <Input label="Nombre del negocio" value={siteName} onChange={(e) => setSiteName(e.target.value)} maxLength={60} />
-        <Input label="WhatsApp (formato: 52XXXXXXXXXX)" value={waNumber} onChange={(e) => setWaNumber(e.target.value)} placeholder="523312345678" hint="Solo dígitos, con código de México" />
-        <Textarea label="Mensaje por defecto de WhatsApp" value={waMsg} onChange={(e) => setWaMsg(e.target.value)} rows={3} maxChars={200} />
-        <Input label="Zona de cobertura" value={coverageZone} onChange={(e) => setCoverage(e.target.value)} placeholder="Zona Metropolitana de Guadalajara" />
-        <Input label="Tiempo de respuesta" value={responseTime} onChange={(e) => setResponse(e.target.value)} placeholder="1 a 2 horas" />
-        <Toggle
-          label="Modo mantenimiento"
-          hint="El sitio muestra una pantalla de 'próximamente' al visitante"
-          checked={maintenance}
-          onChange={setMaintenance}
-        />
-        <Button onClick={saveGeneral} fullWidth>Guardar</Button>
+        <Input label="Tagline / Slogan" value={tagline} onChange={(e) => setTagline(e.target.value)} maxLength={100} placeholder="Decoración de eventos con estilo y amor" />
+        <Input label="URL del logo (imagen)" value={logoUrl} onChange={(e) => setLogoUrl(e.target.value)} placeholder="https://…/logo.png" hint="Sube la imagen al portafolio y copia la URL" />
+
+        <div className="border-t border-admin-border pt-3 space-y-3">
+          <p className="text-xs font-semibold text-admin-muted uppercase tracking-wide">WhatsApp</p>
+          <Input label="Número de WhatsApp" value={waNumber} onChange={(e) => setWaNumber(e.target.value)} placeholder="523312345678" hint="Solo dígitos con código de país: 52 + 10 dígitos" />
+          <Textarea label="Mensaje por defecto" value={waMsg} onChange={(e) => setWaMsg(e.target.value)} rows={2} maxChars={200} />
+          <Toggle label="Mostrar botón flotante de WhatsApp" checked={waFloat} onChange={setWaFloat} />
+        </div>
+
+        <div className="border-t border-admin-border pt-3 space-y-3">
+          <p className="text-xs font-semibold text-admin-muted uppercase tracking-wide">Información de contacto</p>
+          <Input label="Zona de cobertura" value={coverageZone} onChange={(e) => setCoverage(e.target.value)} placeholder="Guadalajara · Zapopan · ZMG" />
+          <Input label="Tiempo de respuesta" value={responseTime} onChange={(e) => setResponse(e.target.value)} placeholder="1 a 2 horas" />
+          <Input label="Horario de atención" value={openingHours} onChange={(e) => setHours(e.target.value)} placeholder="Lunes a domingo, 9:00–20:00" />
+        </div>
+
+        <div className="border-t border-admin-border pt-3 space-y-3">
+          <p className="text-xs font-semibold text-admin-muted uppercase tracking-wide">Legal</p>
+          <Input label="URL del aviso de privacidad" value={privacyUrl} onChange={(e) => setPrivacyUrl(e.target.value)} placeholder="https://…/privacidad" />
+          <Input label="Texto legal del footer" value={legalText} onChange={(e) => setLegalText(e.target.value)} placeholder="Todos los derechos reservados" />
+        </div>
+
+        <div className="border-t border-admin-border pt-3 space-y-3">
+          <p className="text-xs font-semibold text-admin-muted uppercase tracking-wide">Mantenimiento</p>
+          <Toggle
+            label="Modo mantenimiento"
+            hint="El sitio muestra una pantalla de 'próximamente' al visitante"
+            checked={maintenance}
+            onChange={setMaintenance}
+          />
+          {maintenance && (
+            <Textarea label="Mensaje de mantenimiento" value={maintenanceMsg} onChange={(e) => setMainMsg(e.target.value)} rows={2} maxChars={200} placeholder="Estamos mejorando el sitio. Volvemos muy pronto." />
+          )}
+        </div>
+        <Button onClick={saveGeneral} fullWidth>Guardar configuración</Button>
       </Section>
 
       {/* ── COLORES ── */}
@@ -170,6 +229,31 @@ export function AjustesClient({ config, seo, adminUsers, currentUserId }: Props)
           </div>
         ))}
         <Button onClick={saveTrust} fullWidth>Guardar métricas</Button>
+      </Section>
+
+      {/* ── INSTAGRAM ── */}
+      <Section title="Instagram" icon="📸">
+        <p className="text-xs text-admin-muted">
+          Conecta tu cuenta de Instagram para mostrar tus fotos más recientes automáticamente en el portafolio.
+        </p>
+        <div className="rounded-xl border border-amber-100 bg-amber-50 p-3">
+          <p className="text-[0.72rem] text-amber-700">
+            <strong>Cómo obtener el token:</strong> Ve a{' '}
+            <a href="https://developers.facebook.com" target="_blank" rel="noopener noreferrer" className="underline">developers.facebook.com</a>
+            {' '}→ tu app → Instagram → Generar Long-Lived Token.
+            El token dura 60 días — puedes renovarlo aquí cuando expire.
+          </p>
+        </div>
+        <Input
+          label="Long-Lived Access Token de Instagram"
+          value={igToken}
+          onChange={(e) => setIgToken(e.target.value)}
+          placeholder="IGQVJXb3h…"
+          hint="Se guarda de forma segura en la base de datos"
+        />
+        <Button onClick={saveIgToken} fullWidth loading={igSaving}>
+          Guardar token de Instagram
+        </Button>
       </Section>
 
       {/* ── SEO ── */}
