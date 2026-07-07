@@ -31,6 +31,19 @@ export async function createServerSupabaseClient() {
 }
 
 /**
+ * Cliente puro de Supabase con SERVICE ROLE para operaciones de auth.admin.
+ * Usar cuando se necesita auth.admin.updateUserById, createUser, deleteUser etc.
+ */
+export function createPureAdminClient() {
+  const { createClient } = require('@supabase/supabase-js')
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { persistSession: false, autoRefreshToken: false } }
+  )
+}
+
+/**
  * Cliente de Supabase con SERVICE ROLE — bypasea RLS completamente.
  * USAR SOLO en Server Actions protegidas por auth guard.
  */

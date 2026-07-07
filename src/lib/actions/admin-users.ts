@@ -1,6 +1,6 @@
 'use server'
 
-import { createAdminSupabaseClient, createServerSupabaseClient } from '@/lib/supabase/server'
+import { createAdminSupabaseClient, createServerSupabaseClient, createPureAdminClient } from '@/lib/supabase/server'
 import { requireOwner } from '@/lib/auth'
 import { z } from 'zod'
 
@@ -34,9 +34,10 @@ export async function getAdminUsers() {
   if (error || !adminUsers) return []
 
   // Obtener emails de auth.users para cada admin
+  const authClient = createPureAdminClient()
   const results = await Promise.all(
     adminUsers.map(async (admin) => {
-      const { data } = await supabase.auth.admin.getUserById(admin.id)
+      const { data } = await authClient.auth.admin.getUserById(admin.id)
       return {
         id:         admin.id,
         email:      data?.user?.email ?? 'Sin email',
@@ -61,13 +62,15 @@ export async function createAdminUser(data: {
   const parsed = InviteSchema.safeParse(data)
   if (!parsed.success) throw new Error(parsed.error.issues[0].message)
 
-  const supabase = await createAdminSupabaseClient()
+  // Usar cliente puro para auth.admin.createUser
+  const authClient = createPureAdminClient()
+  const dbClient   = await createAdminSupabaseClient()
 
   // 1. Crear usuario en Supabase Auth
-  const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-    email:             parsed.data.email,
-    password:          parsed.data.password,
-    email_confirm:     true, // confirmar automáticamente
+  const { data: authData, error: authError } = await authClient.auth.admin.createUser({
+    email:         parsed.data.email,
+    password:      parsed.data.password,
+    email_confirm: true,
   })
 
   if (authError) {
@@ -80,13 +83,12 @@ export async function createAdminUser(data: {
   if (!authData.user) throw new Error('No se pudo crear el usuario.')
 
   // 2. Registrar en admin_users con su rol
-  const { error: adminError } = await supabase
+  const { error: adminError } = await dbClient
     .from('admin_users')
     .insert({ id: authData.user.id, role: parsed.data.role })
 
   if (adminError) {
-    // Rollback: eliminar el usuario de auth si falla el registro
-    await supabase.auth.admin.deleteUser(authData.user.id)
+    await authClient.auth.admin.deleteUser(authData.user.id)
     throw new Error('Error al asignar rol de administrador.')
   }
 }
@@ -119,12 +121,13 @@ export async function updateAdminUserPassword(data: { userId: string; newPasswor
   const parsed = PasswordSchema.safeParse(data)
   if (!parsed.success) throw new Error(parsed.error.issues[0].message)
 
-  const supabase = await createAdminSupabaseClient()
+  // Usar cliente puro (no SSR) para operaciones de auth.admin
+  const supabase = createPureAdminClient()
   const { error } = await supabase.auth.admin.updateUserById(parsed.data.userId, {
     password: parsed.data.newPassword,
   })
 
-  if (error) throw new Error('Error al cambiar la contraseña.')
+  if (error) throw new Error(`Error al cambiar la contraseña: ${error.message}`)
 }
 
 /** Cambiar la propia contraseña del usuario autenticado */
@@ -154,12 +157,13 @@ export async function deleteAdminUser(userId: string) {
 
   if (userId === currentUser.id) throw new Error('No puedes eliminarte a ti mismo.')
 
-  const supabase = await createAdminSupabaseClient()
+  const authClient = createPureAdminClient()
+  const dbClient   = await createAdminSupabaseClient()
 
   // 1. Eliminar de admin_users
-  await supabase.from('admin_users').delete().eq('id', userId)
+  await dbClient.from('admin_users').delete().eq('id', userId)
 
   // 2. Eliminar de auth.users
-  const { error } = await supabase.auth.admin.deleteUser(userId)
+  const { error } = await authClient.auth.admin.deleteUser(userId)
   if (error) throw new Error('Error al eliminar el usuario.')
 }
