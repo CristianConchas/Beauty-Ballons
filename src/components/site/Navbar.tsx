@@ -30,7 +30,6 @@ export function Navbar({ logoUrl, siteName }: NavbarProps) {
     }
   }, [])
 
-  const waUrl = buildWhatsAppUrl({ number: waNumber, message: waMsg })
 
   return (
     <header
