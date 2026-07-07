@@ -5,10 +5,14 @@ import { useState, useTransition } from 'react'
 
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { ChevronDown, ExternalLink, LogOut } from 'lucide-react'
+import { ChevronDown, ExternalLink, LogOut, Plus, Trash2, KeyRound, ShieldCheck, ShieldAlert } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { SiteConfig, SeoConfig } from '@/types/site.types'
 import { updateSiteConfig, updateSeoConfig } from '@/lib/actions/content'
+import {
+  createAdminUser, updateAdminUserRole,
+  updateAdminUserPassword, updateOwnPassword, deleteAdminUser,
+} from '@/lib/actions/admin-users'
 import { logoutAction } from '@/lib/actions/auth'
 import { Input } from '@/components/ui/Input'
 import { Textarea } from '@/components/ui/Textarea'
@@ -32,9 +36,22 @@ function Section({ title, icon, children }: { title: string; icon: string; child
   )
 }
 
-interface Props { config: SiteConfig | null; seo: SeoConfig | null }
+interface AdminUserItem {
+  id:            string
+  email:         string
+  role:          'owner' | 'editor'
+  created_at:    string
+  last_sign_in:  string | null
+}
 
-export function AjustesClient({ config, seo }: Props) {
+interface Props {
+  config:        SiteConfig | null
+  seo:           SeoConfig  | null
+  adminUsers:    AdminUserItem[]
+  currentUserId: string
+}
+
+export function AjustesClient({ config, seo, adminUsers, currentUserId }: Props) {
   const router     = useRouter()
   const [, startT] = useTransition()
   const refresh    = () => startT(() => router.refresh())
@@ -165,9 +182,14 @@ export function AjustesClient({ config, seo }: Props) {
         <Button onClick={saveSeo} fullWidth>Guardar SEO</Button>
       </Section>
 
+      {/* ── USUARIOS ── */}
+      <UsersSection adminUsers={adminUsers} currentUserId={currentUserId} />
+
       {/* ── CUENTA ── */}
       <Section title="Mi cuenta" icon="👤">
         <div className="space-y-3">
+          {/* Cambiar contraseña propia */}
+          <OwnPasswordForm />
           <a href="/" target="_blank" rel="noopener noreferrer"
             className="flex items-center justify-between rounded-xl border border-admin-border bg-white p-4 text-sm font-medium text-admin-text hover:bg-slate-50">
             Ver sitio público
@@ -182,6 +204,287 @@ export function AjustesClient({ config, seo }: Props) {
           </form>
         </div>
       </Section>
+    </div>
+  )
+}
+
+/* ══════════════════════════════════════════════
+   SECCIÓN DE GESTIÓN DE USUARIOS
+   Solo visible para owners
+   ══════════════════════════════════════════════ */
+
+function UsersSection({
+  adminUsers,
+  currentUserId,
+}: {
+  adminUsers: { id: string; email: string; role: 'owner' | 'editor'; last_sign_in: string | null }[]
+  currentUserId: string
+}) {
+  const [users, setUsers]         = useState(adminUsers)
+  const [showNew, setShowNew]     = useState(false)
+  const [newForm, setNewForm]     = useState({ email: '', password: '', role: 'editor' as 'owner' | 'editor' })
+  const [saving, setSaving]       = useState(false)
+  const [pwdUserId, setPwdUserId] = useState<string | null>(null)
+  const [newPwd, setNewPwd]       = useState('')
+  const [pwdSaving, setPwdSaving] = useState(false)
+
+  async function handleCreate() {
+    if (!newForm.email || !newForm.password) {
+      toast.error('Email y contraseña son requeridos.')
+      return
+    }
+    setSaving(true)
+    try {
+      await createAdminUser(newForm)
+      toast.success('Usuario creado correctamente')
+      setShowNew(false)
+      setNewForm({ email: '', password: '', role: 'editor' })
+      // Refrescar la lista
+      window.location.reload()
+    } catch (e: any) { toast.error(e.message ?? 'Error al crear usuario') }
+    finally { setSaving(false) }
+  }
+
+  async function handleRoleChange(userId: string, role: 'owner' | 'editor') {
+    try {
+      await updateAdminUserRole({ userId, role })
+      setUsers(u => u.map(x => x.id === userId ? { ...x, role } : x))
+      toast.success('Rol actualizado')
+    } catch (e: any) { toast.error(e.message ?? 'Error') }
+  }
+
+  async function handleDelete(userId: string, email: string) {
+    if (!confirm(`¿Eliminar a ${email}? Esta acción no se puede deshacer.`)) return
+    try {
+      await deleteAdminUser(userId)
+      setUsers(u => u.filter(x => x.id !== userId))
+      toast.success('Usuario eliminado')
+    } catch (e: any) { toast.error(e.message ?? 'Error') }
+  }
+
+  async function handlePasswordChange(userId: string) {
+    if (!newPwd || newPwd.length < 8) {
+      toast.error('La contraseña debe tener al menos 8 caracteres.')
+      return
+    }
+    setPwdSaving(true)
+    try {
+      await updateAdminUserPassword({ userId, newPassword: newPwd })
+      toast.success('Contraseña actualizada correctamente')
+      setPwdUserId(null)
+      setNewPwd('')
+    } catch (e: any) { toast.error(e.message ?? 'Error') }
+    finally { setPwdSaving(false) }
+  }
+
+  return (
+    <Section title="Usuarios del admin" icon="👥">
+      <div className="space-y-2">
+        {users.map(user => (
+          <div
+            key={user.id}
+            className="rounded-2xl border border-admin-border bg-white overflow-hidden"
+          >
+            {/* Fila principal */}
+            <div className="flex items-center gap-3 p-3.5">
+              {/* Avatar */}
+              <div
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white text-sm font-bold"
+                style={{ background: user.role === 'owner' ? 'linear-gradient(135deg, var(--color-primary), var(--color-secondary))' : '#94A3B8' }}
+              >
+                {user.email[0].toUpperCase()}
+              </div>
+
+              {/* Info */}
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold text-admin-text">{user.email}</p>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  {user.role === 'owner' ? (
+                    <span className="flex items-center gap-1 text-[0.65rem] font-bold text-[var(--color-primary)]">
+                      <ShieldCheck className="h-3 w-3" /> Owner
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-1 text-[0.65rem] font-bold text-slate-500">
+                      <ShieldAlert className="h-3 w-3" /> Editor
+                    </span>
+                  )}
+                  {user.id === currentUserId && (
+                    <span className="text-[0.6rem] text-admin-muted">(tú)</span>
+                  )}
+                </div>
+              </div>
+
+              {/* Acciones */}
+              {user.id !== currentUserId && (
+                <div className="flex gap-1.5 shrink-0">
+                  <button
+                    onClick={() => { setPwdUserId(pwdUserId === user.id ? null : user.id); setNewPwd('') }}
+                    className="flex h-8 w-8 items-center justify-center rounded-xl border border-admin-border text-admin-muted hover:border-[var(--color-primary)] hover:text-[var(--color-primary)] transition-colors"
+                    title="Cambiar contraseña"
+                  >
+                    <KeyRound className="h-3.5 w-3.5" />
+                  </button>
+                  <select
+                    value={user.role}
+                    onChange={e => handleRoleChange(user.id, e.target.value as 'owner' | 'editor')}
+                    className="h-8 rounded-xl border border-admin-border bg-white px-2 text-[0.72rem] font-medium text-admin-text cursor-pointer"
+                  >
+                    <option value="editor">Editor</option>
+                    <option value="owner">Owner</option>
+                  </select>
+                  <button
+                    onClick={() => handleDelete(user.id, user.email)}
+                    className="flex h-8 w-8 items-center justify-center rounded-xl border border-red-100 text-red-400 hover:bg-red-50 hover:border-red-300 transition-colors"
+                    title="Eliminar usuario"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Panel de cambio de contraseña */}
+            {pwdUserId === user.id && (
+              <div className="border-t border-admin-border bg-slate-50 p-3 flex gap-2">
+                <input
+                  type="password"
+                  placeholder="Nueva contraseña (mín. 8 caracteres)"
+                  value={newPwd}
+                  onChange={e => setNewPwd(e.target.value)}
+                  className="flex-1 rounded-xl border border-admin-border px-3 py-2 text-sm outline-none focus:border-[var(--color-primary)]"
+                  minLength={8}
+                  autoComplete="new-password"
+                />
+                <button
+                  onClick={() => handlePasswordChange(user.id)}
+                  disabled={pwdSaving}
+                  className="rounded-xl px-3 py-2 text-xs font-bold text-white disabled:opacity-60"
+                  style={{ background: 'var(--color-primary)' }}
+                >
+                  {pwdSaving ? '…' : 'Guardar'}
+                </button>
+              </div>
+            )}
+          </div>
+        ))}
+
+        {/* Nuevo usuario */}
+        {showNew ? (
+          <div className="rounded-2xl border border-[var(--color-primary)]/30 bg-white p-4 space-y-3">
+            <p className="text-sm font-semibold text-admin-text">Nuevo usuario</p>
+            <input
+              type="email"
+              placeholder="Email *"
+              value={newForm.email}
+              onChange={e => setNewForm(f => ({ ...f, email: e.target.value }))}
+              className="w-full rounded-xl border border-admin-border px-3 py-2.5 text-sm outline-none focus:border-[var(--color-primary)]"
+              autoComplete="off"
+            />
+            <input
+              type="password"
+              placeholder="Contraseña * (mín. 8 caracteres)"
+              value={newForm.password}
+              onChange={e => setNewForm(f => ({ ...f, password: e.target.value }))}
+              className="w-full rounded-xl border border-admin-border px-3 py-2.5 text-sm outline-none focus:border-[var(--color-primary)]"
+              minLength={8}
+              autoComplete="new-password"
+            />
+            <div>
+              <label className="text-xs font-medium text-admin-muted block mb-1">Rol</label>
+              <select
+                value={newForm.role}
+                onChange={e => setNewForm(f => ({ ...f, role: e.target.value as 'owner' | 'editor' }))}
+                className="w-full rounded-xl border border-admin-border bg-white px-3 py-2.5 text-sm text-admin-text"
+              >
+                <option value="editor">Editor — solo portafolio y leads</option>
+                <option value="owner">Owner — acceso completo</option>
+              </select>
+            </div>
+            <div className="flex gap-2 pt-1">
+              <button onClick={() => setShowNew(false)}
+                className="flex-1 rounded-xl border border-admin-border py-2.5 text-sm font-medium text-admin-muted hover:bg-slate-50">
+                Cancelar
+              </button>
+              <button onClick={handleCreate} disabled={saving}
+                className="flex-1 rounded-xl py-2.5 text-sm font-bold text-white disabled:opacity-60"
+                style={{ background: 'var(--color-primary)' }}>
+                {saving ? 'Creando…' : 'Crear usuario'}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            onClick={() => setShowNew(true)}
+            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-admin-border py-3.5 text-sm font-medium text-admin-muted hover:border-[var(--color-primary)] hover:text-[var(--color-primary)] transition-colors"
+          >
+            <Plus className="h-4 w-4" />
+            Agregar usuario
+          </button>
+        )}
+      </div>
+
+      <div className="rounded-xl border border-amber-100 bg-amber-50 p-3 mt-2">
+        <p className="text-[0.72rem] text-amber-700 font-medium">
+          <strong>Owner:</strong> acceso completo al admin.{' '}
+          <strong>Editor:</strong> solo puede gestionar portafolio y leads.
+        </p>
+      </div>
+    </Section>
+  )
+}
+
+/* ══ Cambiar contraseña propia ══ */
+function OwnPasswordForm() {
+  const [form, setForm]   = useState({ current: '', next: '', confirm: '' })
+  const [saving, setSaving] = useState(false)
+
+  async function handleSubmit() {
+    if (form.next !== form.confirm) {
+      toast.error('Las contraseñas nuevas no coinciden.')
+      return
+    }
+    if (form.next.length < 8) {
+      toast.error('La contraseña debe tener al menos 8 caracteres.')
+      return
+    }
+    setSaving(true)
+    try {
+      await updateOwnPassword({ currentPassword: form.current, newPassword: form.next })
+      toast.success('Contraseña actualizada correctamente')
+      setForm({ current: '', next: '', confirm: '' })
+    } catch (e: any) { toast.error(e.message ?? 'Error') }
+    finally { setSaving(false) }
+  }
+
+  return (
+    <div className="rounded-xl border border-admin-border bg-white p-4 space-y-3">
+      <p className="text-sm font-semibold text-admin-text flex items-center gap-2">
+        <KeyRound className="h-4 w-4 text-admin-muted" />
+        Cambiar mi contraseña
+      </p>
+      <input
+        type="password" placeholder="Contraseña actual"
+        value={form.current} onChange={e => setForm(f => ({ ...f, current: e.target.value }))}
+        className="w-full rounded-xl border border-admin-border px-3 py-2.5 text-sm outline-none focus:border-[var(--color-primary)]"
+        autoComplete="current-password"
+      />
+      <input
+        type="password" placeholder="Nueva contraseña (mín. 8 caracteres)"
+        value={form.next} onChange={e => setForm(f => ({ ...f, next: e.target.value }))}
+        className="w-full rounded-xl border border-admin-border px-3 py-2.5 text-sm outline-none focus:border-[var(--color-primary)]"
+        minLength={8} autoComplete="new-password"
+      />
+      <input
+        type="password" placeholder="Confirmar nueva contraseña"
+        value={form.confirm} onChange={e => setForm(f => ({ ...f, confirm: e.target.value }))}
+        className="w-full rounded-xl border border-admin-border px-3 py-2.5 text-sm outline-none focus:border-[var(--color-primary)]"
+        minLength={8} autoComplete="new-password"
+      />
+      <button onClick={handleSubmit} disabled={saving}
+        className="w-full rounded-xl py-2.5 text-sm font-bold text-white disabled:opacity-60 transition-opacity"
+        style={{ background: 'var(--color-primary)' }}>
+        {saving ? 'Actualizando…' : 'Actualizar contraseña'}
+      </button>
     </div>
   )
 }
