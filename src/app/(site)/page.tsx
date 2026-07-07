@@ -62,6 +62,8 @@ export default async function HomePage() {
       <Navbar
         logoUrl={config?.logo_url   ?? null}
         siteName={config?.site_name ?? SITE_DEFAULTS.name}
+        waNumber={waNumber}
+        waMsg={waMsg}
       />
 
       {hero && <HeroSection hero={hero} waNumber={waNumber} waMsg={waMsg} />}
